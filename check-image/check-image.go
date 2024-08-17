@@ -13,71 +13,115 @@ type image struct {
 	errors []string
 }
 
-func parse(s *bufio.Scanner) (o []image, err error) {
+type filter struct {
+	paths       []string
+	errors      []string
+	hiddenDirs  bool
+	hiddenFiles bool
+}
+
+func parseInput(s *bufio.Scanner) (out []image, err error) {
 	for s.Scan() {
 		t := s.Text()
 		if len(t) == 0 {
 			continue
 		}
+
 		ts := strings.Split(t, " ")
 		if ts[0] == "Checking" {
-			o = append(o, image{path: strings.Join(ts[2:], " ")})
-		} else if len(o) > 0 {
-			o[len(o)-1].errors = append(o[len(o)-1].errors, t)
+			out = append(out, image{path: strings.Join(ts[2:], " ")})
+		} else if len(out) > 0 {
+			out[len(out)-1].errors = append(out[len(out)-1].errors, t)
 		}
 	}
+
 	if err := s.Err(); err != nil {
 		return nil, err
 	}
-	return o, nil
+
+	return out, nil
 }
 
-func filter(i []image) (o []image) {
-	for _, v := range i {
+func filterImages(input []image, filter *filter) (out []image) {
+	for _, v := range input {
 		if len(v.errors) == 0 {
 			continue
 		}
-		s := strings.Split(v.path, "/")
-		if s[len(s)-1][0] == '.' {
+
+		if !filter.hiddenDirs {
+			if strings.Contains(v.path, "/.") {
+				continue
+			}
+		}
+
+		if !filter.hiddenFiles {
+			s := strings.Split(v.path, "/")
+			if s[len(s)-1][0] == '.' {
+				continue
+			}
+		}
+
+		match := false
+		for _, f := range filter.paths {
+			if strings.Contains(v.path, f) {
+				match = true
+				break
+			}
+		}
+		if match {
 			continue
 		}
-		if strings.Contains(v.path, "$RECYCLE.BIN") {
-			continue
-		}
+
 		e := strings.Join(v.errors, " ")
-		if strings.Contains(e, "No such file or directory") {
+		for _, f := range filter.errors {
+			if strings.Contains(e, f) {
+				match = true
+				break
+			}
+		}
+		if match {
 			continue
 		}
-		if strings.Contains(e, "unable to decode APP fields") {
-			continue
-		}
-		if strings.Contains(e, "overread 8") {
-			continue
-		}
-		o = append(o, v)
+
+		out = append(out, v)
 	}
 	return
 }
 
 func main() {
-	var f *os.File
+	var file *os.File
 	if len(os.Args) > 1 {
 		var err error
-		f, err = os.Open(os.Args[1])
+		file, err = os.Open(os.Args[1])
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer f.Close()
+		defer file.Close()
 	} else {
-		f = os.Stdin
+		file = os.Stdin
 	}
-	o, err := parse(bufio.NewScanner(f))
+
+	input, err := parseInput(bufio.NewScanner(file))
 	if err != nil {
 		log.Fatal(err)
 	}
-	fo := filter(o)
-	fmt.Printf("Found %d images with errors\n", len(fo))
-	for _, v := range fo {
+
+	filter := &filter{
+		paths: []string{
+			"$RECYCLE.BIN",
+		},
+		errors: []string{
+			"No such file or directory",
+			"unable to decode APP fields",
+			"overread 8",
+		},
+		hiddenDirs:  false,
+		hiddenFiles: false,
+	}
+
+	out := filterImages(input, filter)
+	fmt.Printf("Found %d images with errors\n", len(out))
+	for _, v := range out {
 		fmt.Println("")
 		fmt.Println(v.path)
 		for _, e := range v.errors {
