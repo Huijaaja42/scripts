@@ -16,6 +16,9 @@ type image struct {
 func parse(s *bufio.Scanner) (o []image, err error) {
 	for s.Scan() {
 		t := s.Text()
+		if len(t) == 0 {
+			continue
+		}
 		ts := strings.Split(t, " ")
 		if ts[0] == "Checking" {
 			o = append(o, image{path: strings.Join(ts[2:], " ")})
@@ -73,12 +76,12 @@ func main() {
 		log.Fatal(err)
 	}
 	fo := filter(o)
-	fmt.Printf("Found %d images with errors\n\n", len(fo))
+	fmt.Printf("Found %d images with errors\n", len(fo))
 	for _, v := range fo {
+		fmt.Println("")
 		fmt.Println(v.path)
 		for _, e := range v.errors {
 			fmt.Println(e)
 		}
-		fmt.Println("")
 	}
 }

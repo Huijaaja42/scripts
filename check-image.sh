@@ -8,7 +8,7 @@ IFS=',' read -r -a a <<< "$p"
 i=1
 for f in "${a[@]}"
 do
-	echo "Checking $i/$c $f"
-	ffmpeg -nostdin -i "$f" -loglevel error -f null -
+	echo -e "\nChecking $i/$c $f"
+	ffmpeg -nostdin -i "$f" -loglevel error -f null - 2>&1
 	i=$((i+1)) 
 done
