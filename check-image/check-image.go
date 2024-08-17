@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -89,16 +90,20 @@ func filterImages(input []image, filter *filter) (out []image) {
 }
 
 func main() {
+	verbose := flag.Bool("v", false, "verbose output")
+	all := flag.Bool("a", false, "include hidden files/directories")
+	flag.Parse()
+
 	var file *os.File
-	if len(os.Args) > 1 {
+	if flag.Arg(0) == "" {
+		file = os.Stdin
+	} else {
 		var err error
-		file, err = os.Open(os.Args[1])
+		file, err = os.Open(flag.Arg(0))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer file.Close()
-	} else {
-		file = os.Stdin
 	}
 
 	input, err := parseInput(bufio.NewScanner(file))
@@ -115,17 +120,23 @@ func main() {
 			"unable to decode APP fields",
 			"overread 8",
 		},
-		hiddenDirs:  false,
-		hiddenFiles: false,
+		hiddenDirs:  *all,
+		hiddenFiles: *all,
 	}
 
 	out := filterImages(input, filter)
-	fmt.Printf("Found %d images with errors\n", len(out))
-	for _, v := range out {
-		fmt.Println("")
-		fmt.Println(v.path)
-		for _, e := range v.errors {
-			fmt.Println(e)
+	if *verbose {
+		fmt.Printf("Found %d images with errors\n", len(out))
+		for _, v := range out {
+			fmt.Println("")
+			fmt.Println(v.path)
+			for _, e := range v.errors {
+				fmt.Println(e)
+			}
+		}
+	} else {
+		for _, v := range out {
+			fmt.Println(v.path)
 		}
 	}
 }
