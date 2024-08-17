@@ -15,10 +15,9 @@ type image struct {
 }
 
 type filter struct {
-	paths       []string
-	errors      []string
-	hiddenDirs  bool
-	hiddenFiles bool
+	paths  []string
+	errors []string
+	hidden bool
 }
 
 func parseInput(s *bufio.Scanner) (out []image, err error) {
@@ -49,15 +48,8 @@ func filterImages(input []image, filter *filter) (out []image) {
 			continue
 		}
 
-		if !filter.hiddenDirs {
+		if !filter.hidden {
 			if strings.Contains(v.path, "/.") {
-				continue
-			}
-		}
-
-		if !filter.hiddenFiles {
-			s := strings.Split(v.path, "/")
-			if s[len(s)-1][0] == '.' {
 				continue
 			}
 		}
@@ -91,7 +83,7 @@ func filterImages(input []image, filter *filter) (out []image) {
 
 func main() {
 	verbose := flag.Bool("v", false, "verbose output")
-	all := flag.Bool("a", false, "include hidden files/directories")
+	hidden := flag.Bool("a", false, "include hidden files")
 	flag.Parse()
 
 	var file *os.File
@@ -120,11 +112,11 @@ func main() {
 			"unable to decode APP fields",
 			"overread 8",
 		},
-		hiddenDirs:  *all,
-		hiddenFiles: *all,
+		hidden: *hidden,
 	}
 
 	out := filterImages(input, filter)
+
 	if *verbose {
 		fmt.Printf("Found %d images with errors\n", len(out))
 		for _, v := range out {
